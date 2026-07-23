@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Simple serverless CRUD API for Items.
+  API Gateway (HTTP API) + Lambda + DynamoDB.
+  Designed for clarity and minimal surface area.
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: python3.12
+    MemorySize: 128
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref ItemsTable
+
+Resources:
+
+  # ---------- DynamoDB ----------
+  ItemsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Items
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      # Optional: enable PITR / Streams in production if needed
+      Tags:
+        - Key: Project
+          Value: crud-api-demo
+
+  # ---------- Lambda ----------
+  CrudFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: crud-items-api
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Description: Handles all CRUD operations for /items
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ItemsTable
+      Events:
+        # HTTP API (cheaper & simpler than REST API for this use-case)
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /items
+            Method: ANY
+        ApiById:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /items/{id}
+            Method: ANY
+
+  # ---------- API Gateway (HTTP API) ----------
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Amz-Date
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+      # Optional: add auth later (JWT, IAM, Lambda authorizer)
+
+Outputs:
+  ApiEndpoint:
+    Description: Base URL of the deployed HTTP API
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  ItemsTableName:
+    Description: DynamoDB table name
+    Value: !Ref ItemsTable
+  CrudFunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt CrudFunction.Arn

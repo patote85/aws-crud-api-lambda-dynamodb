@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /items/{id}",
+  "rawPath": "/items/abc-123",
+  "pathParameters": {
+    "id": "abc-123"
+  },
+  "requestContext": {
+    "http": {
+      "method": "GET",
+      "path": "/items/abc-123"
+    }
+  },
+  "isBase64Encoded": false
+}

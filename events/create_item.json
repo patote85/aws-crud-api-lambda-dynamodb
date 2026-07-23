@@ -1,0 +1,13 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /items",
+  "rawPath": "/items",
+  "requestContext": {
+    "http": {
+      "method": "POST",
+      "path": "/items"
+    }
+  },
+  "body": "{\"name\": \"Mouse Gamer\", \"description\": \"Logitech G Pro\", \"price\": 349.90}",
+  "isBase64Encoded": false
+}
