@@ -252,8 +252,7 @@ GitHub Actions (`.github/workflows/ci.yml`) roda **pytest + moto** em Python 3.1
 - Sem credenciais AWS no runner (DynamoDB mockado pelo moto).
 - Dependências: `pip install -r requirements.txt` (com cache pip).
 - Localmente: os mesmos comandos da seção [Testes unitários](#testes-unitários).
-
-`sam validate` fica fora deste workflow de propósito (PR pequeno); pode entrar num PR seguinte.
+- Job `validate`: `sam validate --lint` no `template.yaml` (`aws-actions/setup-sam`; sem credenciais AWS / sem deploy).
 
 ---
 

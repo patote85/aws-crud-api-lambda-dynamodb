@@ -29,3 +29,16 @@ jobs:
       - name: Run pytest
         # moto mocks DynamoDB — no AWS credentials required
         run: PYTHONPATH=. pytest tests/ -v
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: SAM validate
+        # lint only — no AWS credentials / no deploy
+        run: sam validate --lint --template template.yaml
