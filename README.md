@@ -58,7 +58,7 @@ Cliente (curl / Postman / frontend)
 ## Modelo de dados (Item)
 
 | Campo        | Tipo     | Obrigatório | Descrição                          |
-|--------------|----------|-------------|------------------------------------|
+|--------------|----------|-------------|-------------------------------|
 | `id`         | String   | Sim (auto)  | UUID v4 gerado pelo backend        |
 | `name`       | String   | Sim         | Nome do item                       |
 | `description`| String   | Não         | Descrição livre                    |
@@ -252,7 +252,7 @@ GitHub Actions (`.github/workflows/ci.yml`) roda **pytest + moto** em Python 3.1
 - Sem credenciais AWS no runner (DynamoDB mockado pelo moto).
 - Dependências: `pip install -r requirements.txt` (com cache pip).
 - Localmente: os mesmos comandos da seção [Testes unitários](#testes-unitários).
-- Job `validate`: `sam validate --lint` no `template.yaml` (`aws-actions/setup-sam`; sem credenciais AWS / sem deploy).
+- Job `validate`: `sam validate --lint` no `template.yaml` (setup-sam; sem credenciais AWS / sem deploy).
 
 ---
 
