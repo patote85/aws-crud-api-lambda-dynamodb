@@ -231,8 +231,9 @@ def _get_method_and_path(event: dict) -> tuple[str, str]:
     elif path.startswith("/prod"):
         path = path[4:] or "/"
 
-    # Normalize trailing slash
-    if path != "/" and path.endswith("/"):
+    # Normalize trailing slash, but keep "/items/" so it routes to get_item
+    # (missing id → 400) instead of silently becoming list.
+    if path != "/" and path.endswith("/") and path != "/items/":
         path = path.rstrip("/")
 
     return method, path

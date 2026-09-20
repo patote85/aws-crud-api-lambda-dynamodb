@@ -245,6 +245,18 @@ Todos os testes passam em < 2 segundos e são determinísticos.
 
 ---
 
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) roda **pytest + moto** em Python 3.12 em todo push na `main` e em todo pull request.
+
+- Sem credenciais AWS no runner (DynamoDB mockado pelo moto).
+- Dependências: `pip install -r requirements.txt` (com cache pip).
+- Localmente: os mesmos comandos da seção [Testes unitários](#testes-unitários).
+
+`sam validate` fica fora deste workflow de propósito (PR pequeno); pode entrar num PR seguinte.
+
+---
+
 ## Testes locais com SAM
 
 Você pode invocar a Lambda localmente sem deploy:
