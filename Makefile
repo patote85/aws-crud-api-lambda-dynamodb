@@ -1,5 +1,5 @@
 # Agent-friendly check: shortest path = correct path.
-# No deploy. Lab CORS "*" in template.yaml is intentional for demo.
+# No deploy. CORS lab origins are localhost only (see test_template_cors_ban).
 #
 # make verify = prove-it-works (HTTP contracts via lambda_handler)
 # make check  = lint + typecheck + all tests + sam validate
