@@ -212,6 +212,8 @@ sam delete --stack-name crud-api-demo
 Os testes usam **pytest** + **moto** (mock completo do DynamoDB).  
 Nenhum recurso real da AWS é tocado.
 
+Atalho agent-friendly: `make check` (ver [docs/make-check.md](docs/make-check.md)). Lab CORS `*` no template é intencional.
+
 ### Instalação e execução
 
 ```bash
@@ -247,7 +249,7 @@ Todos os testes passam em < 2 segundos e são determinísticos.
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) roda **pytest + moto** em Python 3.12 em todo push na `main` e em todo pull request.
+GitHub Actions (`.github/workflows/ci.yml`) roda **lint** (ruff + mypy), **pytest + moto**, e **sam validate --lint** em Python 3.12 em todo push na `main` e em todo pull request.
 
 - Sem credenciais AWS no runner (DynamoDB mockado pelo moto).
 - Dependências: `pip install -r requirements.txt` (com cache pip).
