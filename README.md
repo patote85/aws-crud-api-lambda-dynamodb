@@ -91,10 +91,12 @@ aws-crud-api/
 ├── Makefile                 # make verify / make check
 ├── template.yaml            # SAM
 ├── src/app.py               # Lambda handler (CRUD)
+├── src/domain_items.py      # DynamoDB domain (mypy)
 ├── tests/
-│   ├── test_app.py          # unit tests (moto)
+│   ├── test_app.py
 │   ├── test_http_contract.py
-│   └── test_readme_no_self_report.py
+│   ├── test_readme_no_self_report.py
+│   └── test_template_cors_ban.py
 ├── events/
 ├── requirements.txt
 ├── CONTRIBUTING.md
@@ -109,7 +111,7 @@ aws-crud-api/
 4. `ConditionExpression` on update/delete — distinguish not-found.
 5. `Decimal` for price — avoid float precision issues.
 6. No web framework — easy to audit.
-7. Lab CORS may still use `*` until the CORS-ban PR; production must lock origins.
+7. CORS lab origins: localhost only (no `*`); enforced by `tests/test_template_cors_ban.py`.
 
 ## License
 
