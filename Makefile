@@ -1,5 +1,7 @@
 # Agent-friendly check: shortest path = correct path.
 # No deploy. Lab CORS "*" in template.yaml is intentional for demo.
+#
+# make check = lint + typecheck + all tests (incl. HTTP contracts) + sam validate
 
 .PHONY: check test lint typecheck validate
 
