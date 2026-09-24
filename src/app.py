@@ -20,7 +20,7 @@ def _response(status_code: int, body: dict | list | None = None, headers: dict |
     """Build a standard API Gateway proxy response with CORS."""
     default_headers = {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": "http://localhost:3000",
         "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
         "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     }
@@ -138,7 +138,6 @@ def update_item(event: dict) -> dict:
         return _response(400, {"error": "No valid fields to update. Allowed: name, description, price"})
 
     try:
-        # Validate price early for a clean 400 (domain.parse_price inside update also raises)
         if "price" in update_data and update_data["price"] is not None:
             update_data["price"] = domain.parse_price(update_data["price"])
         attributes = domain.update_item(table, item_id, update_data)
