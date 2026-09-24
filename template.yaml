@@ -68,7 +68,8 @@ Resources:
       StageName: prod
       CorsConfiguration:
         AllowOrigins:
-          - "*"
+          - "http://localhost:3000"
+          - "http://127.0.0.1:3000"
         AllowHeaders:
           - Content-Type
           - Authorization
