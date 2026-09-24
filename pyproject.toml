@@ -10,8 +10,6 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 # Mirror canônico: errors + unused + timezone-aware datetimes.
-# Lab CORS "*" in template.yaml / Access-Control-Allow-Origin remains intentional
-# for the SAM demo — do not tighten in this PR.
 select = ["E", "F", "W", "DTZ"]
 ignore = ["E501"]
 
@@ -24,8 +22,6 @@ ignore_missing_imports = true
 warn_return_any = false
 warn_unused_configs = true
 check_untyped_defs = false
-files = ["tests"]
-
-[[tool.mypy.overrides]]
-module = "src.*"
-ignore_errors = true
+# Typecheck tests + domain_items (HTTP app.py stays out).
+# No ignore_errors on domain.
+files = ["tests", "src/domain_items.py"]

@@ -1,11 +1,14 @@
 import json
 import os
-import uuid
-from datetime import datetime, timezone
 from decimal import Decimal
 
 import boto3
 from botocore.exceptions import ClientError
+
+try:
+    import domain_items as domain  # Lambda CodeUri=src/
+except ImportError:  # local: PYTHONPATH=. + from src.app import ...
+    from src import domain_items as domain
 
 # DynamoDB resource (initialized once per cold start)
 dynamodb = boto3.resource("dynamodb")
@@ -59,7 +62,7 @@ def _get_path_param(event: dict, name: str) -> str | None:
 
 
 def create_item(event: dict) -> dict:
-    """POST /items – create a new item."""
+    """POST /items - create a new item."""
     try:
         data = _parse_body(event)
     except ValueError as e:
@@ -69,30 +72,21 @@ def create_item(event: dict) -> dict:
     if not name or not isinstance(name, str) or not name.strip():
         return _response(400, {"error": "Field 'name' is required and must be a non-empty string"})
 
-    item_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-
     price = None
     if "price" in data and data["price"] is not None:
         try:
-            price = Decimal(str(data["price"]))
-        except (ValueError, TypeError, ArithmeticError):
-            return _response(400, {"error": "Field 'price' must be a valid number"})
+            price = domain.parse_price(data["price"])
+        except ValueError as e:
+            return _response(400, {"error": str(e)})
 
-    item = {
-        "id": item_id,
-        "name": name.strip(),
-        "description": data.get("description", ""),
-        "price": price,
-        "createdAt": now,
-        "updatedAt": now,
-    }
-
-    # Remove None values for cleaner DynamoDB item
-    item = {k: v for k, v in item.items() if v is not None}
+    item = domain.build_new_item(
+        name=name,
+        description=data.get("description", ""),
+        price=price,
+    )
 
     try:
-        table.put_item(Item=item)
+        domain.put_item(table, item)
     except ClientError as e:
         return _response(500, {"error": "Failed to create item", "details": e.response["Error"]["Message"]})
 
@@ -100,25 +94,22 @@ def create_item(event: dict) -> dict:
 
 
 def list_items(event: dict) -> dict:
-    """GET /items – list all items (scan – fine for demo / small tables)."""
+    """GET /items - list all items (scan - fine for demo / small tables)."""
     try:
-        response = table.scan()
-        items = response.get("Items", [])
-        # Optional simple pagination could be added later with ExclusiveStartKey
+        items = domain.scan_items(table)
         return _response(200, {"items": items, "count": len(items)})
     except ClientError as e:
         return _response(500, {"error": "Failed to list items", "details": e.response["Error"]["Message"]})
 
 
 def get_item(event: dict) -> dict:
-    """GET /items/{id} – retrieve a single item."""
+    """GET /items/{id} - retrieve a single item."""
     item_id = _get_path_param(event, "id")
     if not item_id:
         return _response(400, {"error": "Missing path parameter 'id'"})
 
     try:
-        response = table.get_item(Key={"id": item_id})
-        item = response.get("Item")
+        item = domain.get_item(table, item_id)
         if not item:
             return _response(404, {"error": f"Item with id '{item_id}' not found"})
         return _response(200, item)
@@ -127,7 +118,7 @@ def get_item(event: dict) -> dict:
 
 
 def update_item(event: dict) -> dict:
-    """PUT /items/{id} – update an existing item."""
+    """PUT /items/{id} - update an existing item."""
     item_id = _get_path_param(event, "id")
     if not item_id:
         return _response(400, {"error": "Missing path parameter 'id'"})
@@ -140,72 +131,37 @@ def update_item(event: dict) -> dict:
     if not data:
         return _response(400, {"error": "Request body cannot be empty"})
 
-    # Only allow updating these fields
     allowed = {"name", "description", "price"}
     update_data = {k: v for k, v in data.items() if k in allowed}
 
     if not update_data:
         return _response(400, {"error": "No valid fields to update. Allowed: name, description, price"})
 
-    # Build UpdateExpression dynamically
-    expr_parts = []
-    expr_names = {}
-    expr_values = {}
-
-    for i, (key, value) in enumerate(update_data.items()):
-        placeholder = f"#f{i}"
-        value_ph = f":v{i}"
-        expr_parts.append(f"{placeholder} = {value_ph}")
-        expr_names[placeholder] = key
-        if key == "price":
-            if value is None:
-                expr_values[value_ph] = None
-            else:
-                try:
-                    expr_values[value_ph] = Decimal(str(value))
-                except (ValueError, TypeError, ArithmeticError):
-                    return _response(400, {"error": "Field 'price' must be a valid number"})
-        else:
-            expr_values[value_ph] = value
-
-    # Always update updatedAt
-    expr_parts.append("#ua = :ua")
-    expr_names["#ua"] = "updatedAt"
-    expr_values[":ua"] = datetime.now(timezone.utc).isoformat()
-
-    update_expression = "SET " + ", ".join(expr_parts)
-
     try:
-        response = table.update_item(
-            Key={"id": item_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeNames=expr_names,
-            ExpressionAttributeValues=expr_values,
-            ConditionExpression="attribute_exists(id)",
-            ReturnValues="ALL_NEW",
-        )
-        return _response(200, response["Attributes"])
+        # Validate price early for a clean 400 (domain.parse_price inside update also raises)
+        if "price" in update_data and update_data["price"] is not None:
+            update_data["price"] = domain.parse_price(update_data["price"])
+        attributes = domain.update_item(table, item_id, update_data)
+        return _response(200, attributes)
+    except ValueError as e:
+        return _response(400, {"error": str(e)})
     except ClientError as e:
-        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+        if domain.is_conditional_check_failed(e):
             return _response(404, {"error": f"Item with id '{item_id}' not found"})
         return _response(500, {"error": "Failed to update item", "details": e.response["Error"]["Message"]})
 
 
 def delete_item(event: dict) -> dict:
-    """DELETE /items/{id} – delete an item."""
+    """DELETE /items/{id} - delete an item."""
     item_id = _get_path_param(event, "id")
     if not item_id:
         return _response(400, {"error": "Missing path parameter 'id'"})
 
     try:
-        # Use ConditionExpression to distinguish not-found from success
-        table.delete_item(
-            Key={"id": item_id},
-            ConditionExpression="attribute_exists(id)",
-        )
+        domain.delete_item(table, item_id)
         return _response(204, None)
     except ClientError as e:
-        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+        if domain.is_conditional_check_failed(e):
             return _response(404, {"error": f"Item with id '{item_id}' not found"})
         return _response(500, {"error": "Failed to delete item", "details": e.response["Error"]["Message"]})
 
@@ -215,24 +171,18 @@ def _get_method_and_path(event: dict) -> tuple[str, str]:
     Extract HTTP method and path supporting both
     API Gateway REST (v1) and HTTP API (v2 / payload format 2.0).
     """
-    # Payload format 2.0 (HTTP API)
     if "requestContext" in event and "http" in event["requestContext"]:
         method = event["requestContext"]["http"].get("method", "").upper()
         path = event.get("rawPath") or event["requestContext"]["http"].get("path", "")
     else:
-        # Payload format 1.0 (REST API)
         method = event.get("httpMethod", "").upper()
         path = event.get("path") or event.get("resource", "")
 
-    # Strip stage prefix if present (e.g. /prod/items -> /items)
-    # Common when using REST API or custom domain mapping
     if path.startswith("/prod/"):
         path = path[5:]
     elif path.startswith("/prod"):
         path = path[4:] or "/"
 
-    # Normalize trailing slash, but keep "/items/" so it routes to get_item
-    # (missing id → 400) instead of silently becoming list.
     if path != "/" and path.endswith("/") and path != "/items/":
         path = path.rstrip("/")
 
@@ -247,7 +197,6 @@ def lambda_handler(event: dict, context) -> dict:
     """
     method, path = _get_method_and_path(event)
 
-    # Handle CORS preflight
     if method == "OPTIONS":
         return _response(200, None)
 
@@ -265,5 +214,4 @@ def lambda_handler(event: dict, context) -> dict:
 
         return _response(404, {"error": f"Route not found: {method} {path}"})
     except Exception as e:
-        # Catch-all for unexpected errors (log in real deployments)
         return _response(500, {"error": "Internal server error", "details": str(e)})
