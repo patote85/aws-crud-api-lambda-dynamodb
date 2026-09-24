@@ -16,7 +16,7 @@ lint:
 	ruff check src tests
 
 typecheck:
-	mypy tests
+	mypy
 
 validate:
 	sam validate --lint --template template.yaml
